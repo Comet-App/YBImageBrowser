@@ -53,6 +53,36 @@
         browser.dataSourceArray = datas;
         browser.currentPage = pageArg.integerValue;
         [browser show];
+        [self rotateForSmokeTestIfNeeded];
+    });
+}
+
+/// Debug hook: '-YBIBSmokeTestRotate YES' rotates to landscape 1.5s after showing.
+/// With '-YBIBSmokeTestAllOrientations YES' the app's interface rotates (browser follows it);
+/// otherwise only the device orientation changes (browser rotates itself).
+- (void)rotateForSmokeTestIfNeeded {
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"YBIBSmokeTestRotate"]) return;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"YBIBSmokeTestAllOrientations"]) {
+            if (@available(iOS 16.0, *)) {
+                UIWindowScene *scene = self.window.windowScene;
+                UIWindowSceneGeometryPreferencesIOS *preferences = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:UIInterfaceOrientationMaskLandscapeRight];
+                [scene requestGeometryUpdateWithPreferences:preferences errorHandler:^(NSError * _Nonnull error) {
+                    NSLog(@"[YBIBSmoke] geometry update failed: %@", error);
+                }];
+            }
+        } else {
+            // The simulator cannot fake the sensor, so drive the browser's internal rotation directly (debug only).
+            YBImageBrowser *browser = nil;
+            for (UIView *view in self.window.subviews) {
+                if ([view isKindOfClass:YBImageBrowser.class]) browser = (YBImageBrowser *)view;
+            }
+            id handler = [browser valueForKey:@"rotationHandler"];
+            SEL selector = NSSelectorFromString(@"rotateToDeviceOrientation:");
+            if ([handler respondsToSelector:selector]) {
+                ((void (*)(id, SEL, UIDeviceOrientation))[handler methodForSelector:selector])(handler, selector, UIDeviceOrientationLandscapeLeft);
+            }
+        }
     });
 }
 

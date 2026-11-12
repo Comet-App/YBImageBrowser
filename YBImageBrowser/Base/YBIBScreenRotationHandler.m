@@ -47,6 +47,7 @@ static NSUInteger const kMaskNull = 10000;
     CGSize _verticalContainerSize;
     CGSize _horizontalContainerSize;
     NSInteger _recordPage;
+    BOOL _generatingDeviceOrientation;
 }
 
 #pragma mark - life cycle
@@ -74,11 +75,20 @@ static NSUInteger const kMaskNull = 10000;
 }
 
 - (void)startObserveDeviceOrientation {
+    // UIKit does not guarantee device orientation updates (e.g. for portrait-only apps), so request them.
+    if (!_generatingDeviceOrientation) {
+        [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+        _generatingDeviceOrientation = YES;
+    }
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(deviceOrientationDidChangeNotification:) name:UIDeviceOrientationDidChangeNotification object:nil];
 }
 
 - (void)clear {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (_generatingDeviceOrientation) {
+        [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+        _generatingDeviceOrientation = NO;
+    }
 }
 
 - (void)configContainerSize:(CGSize)size {
@@ -151,10 +161,13 @@ static NSUInteger const kMaskNull = 10000;
 #pragma mark - event
 
 - (void)deviceOrientationDidChangeNotification:(NSNotification *)note {
+    [self rotateToDeviceOrientation:[UIDevice currentDevice].orientation];
+}
+
+- (void)rotateToDeviceOrientation:(UIDeviceOrientation)expectOrientation {
     if (![self supportedOnlyOneSystemOrientation]) return;
     if (_browser.isTransitioning || self.rotating) return;
     
-    UIDeviceOrientation expectOrientation = [UIDevice currentDevice].orientation;
     if (expectOrientation == self.currentOrientation || ![self supportedOfOrientation:expectOrientation]) return;
     
     self.rotating = YES;

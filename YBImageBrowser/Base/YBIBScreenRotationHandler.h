@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)clear;
 
+/// Rotate the browser itself (used when the host controller supports a single orientation).
+- (void)rotateToDeviceOrientation:(UIDeviceOrientation)orientation;
+
 - (void)configContainerSize:(CGSize)size;
 
 - (CGSize)containerSizeWithOrientation:(UIDeviceOrientation)orientation;

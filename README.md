@@ -8,6 +8,41 @@
 
 **iOS 图片浏览器，功能强大，易于拓展，性能优化和内存控制让其运行更加的流畅和稳健。**
 
+## About this fork (Comet)
+
+This fork updates YBImageBrowser 3.0.9 to work on current iOS and iPadOS (tested on iOS 26 with Xcode 26). It supports iPhone and iPad only, not Mac Catalyst.
+
+**Requirements**
+- iOS 13.0 or later.
+- To save to Photos, add `NSPhotoLibraryAddUsageDescription` to your `Info.plist`. Saving now asks only for add-only access (`PHAccessLevelAddOnly` on iOS 14 and later), not full photo-library access.
+- `shouldHideStatusBar` still needs `View controller-based status bar appearance` (`UIViewControllerBasedStatusBarAppearance`) set to `NO`. Without that key the status bar stays visible.
+
+**Fixes**
+- Opening the browser no longer crashes when an item has no `projectiveView`. On iOS 17 and later this crashed every time.
+- A nil or empty video URL no longer crashes.
+- Video:
+  - Saving a remote video no longer leaks the download session.
+  - Downloaded video files can no longer collide with earlier downloads.
+  - The player's time observer is removed when playback resets.
+  - The audio session activates only when playback starts, so showing a video page doesn't stop other audio.
+  - The progress slider no longer gets stuck after a seek is skipped.
+  - One hour now displays as `01:00:00` instead of `00:00`.
+- High-resolution cropping now maps correctly for all 8 `UIImageOrientation` values. Upside-down photos were cropped from the wrong region.
+- The image cache respects its count limit again, and images on screen are kept until their cell is reused.
+- `currentPage` is clamped to valid pages, including when it's set before the data source.
+- Calling `hide` while a transition is running is ignored.
+- The browser now works in scene-based apps: it finds the key window from the active scene and reads safe-area insets from that window.
+- When the hosting controller supports a single orientation, the browser rotates itself again. It now requests device-orientation notifications itself.
+- Photos are saved with `PHPhotoLibrary` instead of `ALAssetsLibrary`, and GIF and APNG data is kept intact.
+- SDWebImage in the demo is updated to 5.21.7.
+
+**Development**
+- Unit tests: `xcodebuild test -workspace YBImageBrowserDemo.xcworkspace -scheme YBImageBrowserDemo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:YBImageBrowserDemoTests`
+- Launch arguments in the demo app, for quick checks without tapping:
+  - `-YBIBSmokeTestPage <n>` opens a browser of local media on page `n`.
+  - Add `-YBIBSmokeTestRotate YES` to rotate to landscape after it opens.
+  - Add `-YBIBSmokeTestAllOrientations YES` to rotate the app itself (the browser follows the controller). Without it, the browser rotates itself.
+
 ##### 相关文章：
 ##### [YBImageBrowser 重构心得：如何优化架构、性能、内存？](https://www.jianshu.com/p/ef53d0094437)
 ##### [避免 iOS 组件依赖冲突的小技巧](https://www.jianshu.com/p/0e3283275300)
@@ -66,6 +101,8 @@
 ## CocoaPods
 
 支持分库导入，核心部分就是图片浏览功能，视频播放作为拓展功能按需导入。
+
+最低支持 iOS 13.0。保存到相册需要在 `Info.plist` 中添加 `NSPhotoLibraryAddUsageDescription`（仅申请“添加照片”权限）。
 
 1. 在 Podfile 中添加：
 ```

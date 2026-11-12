@@ -16,6 +16,10 @@
  
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
 //    return [self.topViewController supportedInterfaceOrientations];
+    // Debug hook: '-YBIBSmokeTestAllOrientations YES' lets the app rotate, so the browser follows it.
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"YBIBSmokeTestAllOrientations"]) {
+        return UIInterfaceOrientationMaskAll;
+    }
     return UIInterfaceOrientationMaskPortrait;
 }
 
