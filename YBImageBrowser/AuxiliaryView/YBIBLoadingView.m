@@ -84,14 +84,14 @@ static void *YBIBLoadingKey = &YBIBLoadingKey;
     UIBezierPath *bottomPath = [UIBezierPath bezierPathWithArcCenter:center radius:radius startAngle:0 endAngle:M_PI * 2 clockwise:YES];
     bottomPath.lineWidth = 4.0;
     bottomPath.lineCapStyle = kCGLineCapRound;
-    bottomPath.lineJoinStyle = kCGLineCapRound;
+    bottomPath.lineJoinStyle = kCGLineJoinRound;
     [bottomPath stroke];
     
     [[UIColor whiteColor] setStroke];
     UIBezierPath *activePath = [UIBezierPath bezierPathWithArcCenter:center radius:radius startAngle:-M_PI / 2.0 endAngle:M_PI * 2 * progress - M_PI / 2.0 clockwise:true];
     activePath.lineWidth = strokeWidth;
     activePath.lineCapStyle = kCGLineCapRound;
-    activePath.lineJoinStyle = kCGLineCapRound;
+    activePath.lineJoinStyle = kCGLineJoinRound;
     [activePath stroke];
     
     NSShadow *shadow = [NSShadow new];

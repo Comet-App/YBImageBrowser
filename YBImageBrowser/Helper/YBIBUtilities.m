@@ -10,17 +10,52 @@
 #import <sys/utsname.h>
 
 
+static UIWindowScene * _Nullable YBIBActiveWindowScene(void) {
+    UIWindowScene *fallback = nil;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) continue;
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (scene.activationState == UISceneActivationStateForegroundActive) {
+            for (UIWindow *window in windowScene.windows) {
+                if (window.isKeyWindow) return windowScene;
+            }
+            if (!fallback) fallback = windowScene;
+        } else if (!fallback && scene.activationState == UISceneActivationStateForegroundInactive) {
+            fallback = windowScene;
+        }
+    }
+    return fallback;
+}
+
+UIWindow * _Nullable YBIBKeyWindow(void) {
+    UIWindowScene *scene = YBIBActiveWindowScene();
+    UIWindow *firstNormal = nil;
+    for (UIWindow *window in scene.windows) {
+        if (window.isKeyWindow) return window;
+        if (!firstNormal && window.windowLevel == UIWindowLevelNormal && !window.isHidden) firstNormal = window;
+    }
+    if (firstNormal) return firstNormal;
+    // Apps without scenes: fall back to the application delegate's window.
+    id<UIApplicationDelegate> delegate = UIApplication.sharedApplication.delegate;
+    if ([delegate respondsToSelector:@selector(window)]) return delegate.window;
+    return nil;
+}
+
 UIWindow * _Nullable YBIBNormalWindow(void) {
-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
-    if (window.windowLevel != UIWindowLevelNormal) {
-        NSArray *windows = [[UIApplication sharedApplication] windows];
-        for(UIWindow *temp in windows) {
-            if (temp.windowLevel == UIWindowLevelNormal) {
+    UIWindow *window = YBIBKeyWindow();
+    if (window && window.windowLevel != UIWindowLevelNormal) {
+        for (UIWindow *temp in window.windowScene.windows) {
+            if (temp.windowLevel == UIWindowLevelNormal && !temp.isHidden) {
                 return temp;
             }
         }
     }
     return window;
+}
+
+UIInterfaceOrientation YBIBInterfaceOrientation(void) {
+    UIWindowScene *scene = YBIBKeyWindow().windowScene ?: YBIBActiveWindowScene();
+    return scene ? scene.interfaceOrientation : UIInterfaceOrientationPortrait;
 }
 
 UIViewController * _Nullable YBIBTopController(void) {
@@ -69,12 +104,10 @@ BOOL YBIBIsIphoneXSeries(void) {
 }
 
 CGFloat YBIBStatusbarHeight(void) {
-    CGFloat height = 0;
-    if (@available(iOS 11.0, *)) {
-        height = UIApplication.sharedApplication.delegate.window.safeAreaInsets.top;
-    }
+    UIWindow *window = YBIBKeyWindow();
+    CGFloat height = window.safeAreaInsets.top;
     if (height <= 0) {
-        height = UIApplication.sharedApplication.statusBarFrame.size.height;
+        height = window.windowScene.statusBarManager.statusBarFrame.size.height;
     }
     if (height <= 0) {
         height = 20;
@@ -83,26 +116,25 @@ CGFloat YBIBStatusbarHeight(void) {
 }
 
 CGFloat YBIBSafeAreaBottomHeight(void) {
-    CGFloat bottom = 0;
-    if (@available(iOS 11.0, *)) {
-        bottom = UIApplication.sharedApplication.delegate.window.safeAreaInsets.bottom;
-    }
-    return bottom;
+    return YBIBKeyWindow().safeAreaInsets.bottom;
 }
 
 UIImage *YBIBSnapshotView(UIView *view) {
-    UIGraphicsBeginImageContextWithOptions(view.bounds.size, YES, [UIScreen mainScreen].scale);
-    [view drawViewHierarchyInRect:view.bounds afterScreenUpdates:NO];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
+    // 'UIGraphicsBeginImageContext' throws on an empty size since iOS 17, so guard and use the renderer.
+    if (!view || view.bounds.size.width <= 0 || view.bounds.size.height <= 0) return nil;
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.opaque = YES;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:view.bounds.size format:format];
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+        [view drawViewHierarchyInRect:view.bounds afterScreenUpdates:NO];
+    }];
 }
 
 UIEdgeInsets YBIBPaddingByBrowserOrientation(UIDeviceOrientation orientation) {
     UIEdgeInsets padding = UIEdgeInsetsZero;
     if (!YBIBIsIphoneXSeries()) return padding;
     
-    UIDeviceOrientation barOrientation = (UIDeviceOrientation)UIApplication.sharedApplication.statusBarOrientation;
+    UIDeviceOrientation barOrientation = (UIDeviceOrientation)YBIBInterfaceOrientation();
     
     if (UIDeviceOrientationIsLandscape(orientation)) {
         BOOL same = orientation == barOrientation;

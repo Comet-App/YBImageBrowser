@@ -70,6 +70,8 @@
 		23F26AD222D7208700C27C21 /* YBIBVideoActionBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 23F26AD122D7208700C27C21 /* YBIBVideoActionBar.m */; };
 		23F5A00D23161D51003F0FAE /* YBIBDefaultWebImageMediator.m in Sources */ = {isa = PBXBuildFile; fileRef = 23F5A00C23161D51003F0FAE /* YBIBDefaultWebImageMediator.m */; };
 		23FF103622F6B6FC0091331F /* TestFController.m in Sources */ = {isa = PBXBuildFile; fileRef = 23FF103522F6B6FC0091331F /* TestFController.m */; };
+		3068AF07E1042CF94ACD2269 /* YBIBLogicTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 08F92E41E82298E692E78726 /* YBIBLogicTests.m */; };
+		F80970928E08FC512DCD6344 /* Pods_YBImageBrowserDemoTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9079D3A817D74FE0EE4F421E /* Pods_YBImageBrowserDemoTests.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +92,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		08F92E41E82298E692E78726 /* YBIBLogicTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = YBIBLogicTests.m; sourceTree = "<group>"; };
 		23028E0E22DD6EB500C745ED /* TestToolViewHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestToolViewHandler.h; sourceTree = "<group>"; };
 		23028E0F22DD6EB500C745ED /* TestToolViewHandler.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TestToolViewHandler.m; sourceTree = "<group>"; };
 		23028E1122DD90EC00C745ED /* localVideo0.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = localVideo0.mp4; sourceTree = "<group>"; };
@@ -219,8 +222,11 @@
 		23FC590B23B05EBD00F42054 /* YBIBVideoCell+Internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "YBIBVideoCell+Internal.h"; sourceTree = "<group>"; };
 		23FF103422F6B6FC0091331F /* TestFController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TestFController.h; sourceTree = "<group>"; };
 		23FF103522F6B6FC0091331F /* TestFController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TestFController.m; sourceTree = "<group>"; };
+		2A4395DAE88CC4B00F0EA102 /* Pods-YBImageBrowserDemoTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YBImageBrowserDemoTests.release.xcconfig"; path = "Target Support Files/Pods-YBImageBrowserDemoTests/Pods-YBImageBrowserDemoTests.release.xcconfig"; sourceTree = "<group>"; };
+		9079D3A817D74FE0EE4F421E /* Pods_YBImageBrowserDemoTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_YBImageBrowserDemoTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		97542AA3FE46C41411B15C5D /* Pods_YBImageBrowserDemo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_YBImageBrowserDemo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7455F1D491BFCA198544CA1 /* Pods-YBImageBrowserDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YBImageBrowserDemo.debug.xcconfig"; path = "Target Support Files/Pods-YBImageBrowserDemo/Pods-YBImageBrowserDemo.debug.xcconfig"; sourceTree = "<group>"; };
+		BF53DCDB2D07A02552F770D9 /* Pods-YBImageBrowserDemoTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YBImageBrowserDemoTests.debug.xcconfig"; path = "Target Support Files/Pods-YBImageBrowserDemoTests/Pods-YBImageBrowserDemoTests.debug.xcconfig"; sourceTree = "<group>"; };
 		F2A1E10DD2C568E5493980E0 /* Pods-YBImageBrowserDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YBImageBrowserDemo.release.xcconfig"; path = "Target Support Files/Pods-YBImageBrowserDemo/Pods-YBImageBrowserDemo.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -237,6 +243,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F80970928E08FC512DCD6344 /* Pods_YBImageBrowserDemoTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,6 +404,7 @@
 				23B326FD22A768F4008BFF5D /* Products */,
 				9A38309A58D899EE4318D182 /* Pods */,
 				3B561BDD0EE4EB2318C37D22 /* Frameworks */,
+				A74B3F9D1A53CD698E617A1B /* YBImageBrowserDemoTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -551,6 +559,7 @@
 			isa = PBXGroup;
 			children = (
 				97542AA3FE46C41411B15C5D /* Pods_YBImageBrowserDemo.framework */,
+				9079D3A817D74FE0EE4F421E /* Pods_YBImageBrowserDemoTests.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -560,8 +569,19 @@
 			children = (
 				B7455F1D491BFCA198544CA1 /* Pods-YBImageBrowserDemo.debug.xcconfig */,
 				F2A1E10DD2C568E5493980E0 /* Pods-YBImageBrowserDemo.release.xcconfig */,
+				BF53DCDB2D07A02552F770D9 /* Pods-YBImageBrowserDemoTests.debug.xcconfig */,
+				2A4395DAE88CC4B00F0EA102 /* Pods-YBImageBrowserDemoTests.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		A74B3F9D1A53CD698E617A1B /* YBImageBrowserDemoTests */ = {
+			isa = PBXGroup;
+			children = (
+				08F92E41E82298E692E78726 /* YBIBLogicTests.m */,
+			);
+			name = YBImageBrowserDemoTests;
+			path = YBImageBrowserDemoTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -590,6 +610,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 23B3272B22A768F6008BFF5D /* Build configuration list for PBXNativeTarget "YBImageBrowserDemoTests" */;
 			buildPhases = (
+				DC90E86EC8281BCF1C292618 /* [CP] Check Pods Manifest.lock */,
 				23B3271022A768F6008BFF5D /* Sources */,
 				23B3271122A768F6008BFF5D /* Frameworks */,
 				23B3271222A768F6008BFF5D /* Resources */,
@@ -719,6 +740,28 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-YBImageBrowserDemo/Pods-YBImageBrowserDemo-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		DC90E86EC8281BCF1C292618 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-YBImageBrowserDemoTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		FE26DE734A8060A130272B84 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -804,6 +847,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3068AF07E1042CF94ACD2269 /* YBIBLogicTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -900,7 +944,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -953,7 +997,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -970,7 +1014,7 @@
 				DEVELOPMENT_TEAM = UU8H9EQ986;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/YBImageBrowserDemo/PrefixHeader.pch";
 				INFOPLIST_FILE = YBImageBrowserDemo/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -990,7 +1034,7 @@
 				DEVELOPMENT_TEAM = UU8H9EQ986;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/YBImageBrowserDemo/PrefixHeader.pch";
 				INFOPLIST_FILE = YBImageBrowserDemo/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1003,11 +1047,14 @@
 		};
 		23B3272C22A768F6008BFF5D /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BF53DCDB2D07A02552F770D9 /* Pods-YBImageBrowserDemoTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = UU8H9EQ986;
-				INFOPLIST_FILE = YBImageBrowserDemoTests/Info.plist;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1017,16 +1064,24 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YBImageBrowserDemo.app/YBImageBrowserDemo";
+				USER_HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/YBImageBrowser/**",
+					"$(SRCROOT)/Video",
+				);
 			};
 			name = Debug;
 		};
 		23B3272D22A768F6008BFF5D /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2A4395DAE88CC4B00F0EA102 /* Pods-YBImageBrowserDemoTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = UU8H9EQ986;
-				INFOPLIST_FILE = YBImageBrowserDemoTests/Info.plist;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1036,6 +1091,11 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/YBImageBrowserDemo.app/YBImageBrowserDemo";
+				USER_HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/YBImageBrowser/**",
+					"$(SRCROOT)/Video",
+				);
 			};
 			name = Release;
 		};

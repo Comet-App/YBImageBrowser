@@ -34,7 +34,7 @@
         _titleLabel.font = [UIFont fontWithName:@"Avenir-Medium" size:16];
         _titleLabel.textAlignment = NSTextAlignmentCenter;
         _line = [CALayer new];
-        _line.backgroundColor = UIColor.groupTableViewBackgroundColor.CGColor;
+        _line.backgroundColor = UIColor.systemGroupedBackgroundColor.CGColor;
         [self.contentView addSubview:_titleLabel];
         [self.contentView.layer addSublayer:_line];
     }

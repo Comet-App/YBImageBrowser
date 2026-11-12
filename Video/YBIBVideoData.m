@@ -171,34 +171,45 @@ extern CGImageRef YYCGImageCreateDecodedCopy(CGImageRef imageRef, BOOL decodeFor
         [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].unableToSave];
     };
     
-    if (self.videoAVAsset && [self.videoAVAsset isKindOfClass:AVURLAsset.class]) {
-        AVURLAsset *asset = (AVURLAsset *)self.videoAVAsset;
-        NSURL *URL = asset.URL;
-        if ([URL.scheme isEqualToString:@"file"]) {
-            NSString *path = URL.path;
-            if (UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(path)) {
-                UISaveVideoAtPathToSavedPhotosAlbum(path, self, @selector(UISaveVideoAtPathToSavedPhotosAlbum_videoPath:didFinishSavingWithError:contextInfo:), nil);
-            } else {
-                unableToSave();
-            }
-        } else if ([URL.scheme containsString:@"http"]) {
-            [self downloadWithURL:URL];
-        } else {
-            unableToSave();
-        }
-    } else {
+    if (!self.videoAVAsset || ![self.videoAVAsset isKindOfClass:AVURLAsset.class]) {
         unableToSave();
+        return;
     }
+    NSURL *URL = ((AVURLAsset *)self.videoAVAsset).URL;
+    NSString *scheme = URL.scheme.lowercaseString;
+    if (!URL.isFileURL && ![scheme isEqualToString:@"http"] && ![scheme isEqualToString:@"https"]) {
+        unableToSave();
+        return;
+    }
+
+    // Ask for permission before downloading, so nothing is downloaded that cannot be saved.
+    [YBIBPhotoAlbumManager getPhotoAlbumAuthorizationSuccess:^{
+        if (URL.isFileURL) {
+            [self saveVideoToPhotoAlbumWithFileURL:URL removeAfterSaving:NO];
+        } else {
+            [self downloadWithURL:URL];
+        }
+    } failed:^{
+        [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].getPhotoAlbumAuthorizationFailed];
+    }];
 }
 
 #pragma mark - private
 
-- (void)UISaveVideoAtPathToSavedPhotosAlbum_videoPath:(NSString *)videoPath didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo{
-    if (error) {
-        [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].saveToPhotoAlbumFailed];
-    } else {
-        [self.yb_auxiliaryViewHandler() yb_showCorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].saveToPhotoAlbumSuccess];
+- (void)saveVideoToPhotoAlbumWithFileURL:(NSURL *)fileURL removeAfterSaving:(BOOL)removeAfterSaving {
+    if (!UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(fileURL.path)) {
+        [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].unableToSave];
+        if (removeAfterSaving) [[NSFileManager defaultManager] removeItemAtURL:fileURL.URLByDeletingLastPathComponent error:nil];
+        return;
     }
+    [YBIBPhotoAlbumManager saveVideoWithFileURL:fileURL completion:^(NSError * _Nullable error) {
+        if (removeAfterSaving) [[NSFileManager defaultManager] removeItemAtURL:fileURL.URLByDeletingLastPathComponent error:nil];
+        if (error) {
+            [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].saveToPhotoAlbumFailed];
+        } else {
+            [self.yb_auxiliaryViewHandler() yb_showCorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].saveToPhotoAlbumSuccess];
+        }
+    }];
 }
 
 - (void)downloadWithURL:(NSURL *)URL {
@@ -209,9 +220,11 @@ extern CGImageRef YYCGImageCreateDecodedCopy(CGImageRef imageRef, BOOL decodeFor
     
     self.downloading = YES;
     NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    // A session retains its delegate until invalidated, so it is invalidated once the task finishes.
     NSURLSession *session = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:[NSOperationQueue mainQueue]];
     _downloadTask = [session downloadTaskWithURL:URL];
     [_downloadTask resume];
+    [session finishTasksAndInvalidate];
 }
 
 #pragma mark - <NSURLSessionDelegate>
@@ -231,27 +244,33 @@ didCompleteWithError:(nullable NSError *)error {
     if (error) {
         [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].downloadFailed];
     }
+    _downloadTask = nil;
     self.downloading = NO;
 }
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask
 didFinishDownloadingToURL:(NSURL *)location {
-    NSString *cache = [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
-    NSString *file = [cache stringByAppendingPathComponent:downloadTask.response.suggestedFilename];
-    [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:file] error:nil];
-    if (UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(file)) {
-        UISaveVideoAtPathToSavedPhotosAlbum(file, self, @selector(UISaveVideoAtPathToSavedPhotosAlbum_videoPath:didFinishSavingWithError:contextInfo:), nil);
+    // Use a unique directory so a previous download with the same name is never picked up instead.
+    NSString *name = downloadTask.response.suggestedFilename ?: [NSUUID UUID].UUIDString;
+    NSString *directory = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSUUID UUID].UUIDString];
+    [[NSFileManager defaultManager] createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *file = [directory stringByAppendingPathComponent:name];
+    NSError *moveError = nil;
+    BOOL moved = [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:file] error:&moveError];
+    if (moved) {
+        [self saveVideoToPhotoAlbumWithFileURL:[NSURL fileURLWithPath:file] removeAfterSaving:YES];
     } else {
         [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].saveToPhotoAlbumFailed];
     }
-    self.downloading = NO;
+    // 'downloading' is reset in '-URLSession:task:didCompleteWithError:', which always follows.
 }
 
 #pragma mark - getters & setters
 
 - (void)setVideoURL:(NSURL *)videoURL{
     _videoURL = [videoURL isKindOfClass:NSString.class] ? [NSURL URLWithString:(NSString *)videoURL] : videoURL;
-    self.videoAVAsset = [AVURLAsset URLAssetWithURL:_videoURL options:nil];
+    // 'URLAssetWithURL:' throws on nil, e.g. when a malformed string was passed in.
+    self.videoAVAsset = _videoURL.absoluteString.length > 0 ? [AVURLAsset URLAssetWithURL:_videoURL options:nil] : nil;
 }
 
 - (void)setDownloading:(BOOL)downloading {

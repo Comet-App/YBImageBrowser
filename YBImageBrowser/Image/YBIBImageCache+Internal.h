@@ -28,6 +28,9 @@ typedef NS_ENUM(NSInteger, YBIBImageCacheType) {
 
 - (void)removeResidentForKey:(NSString *)key;
 
+/// Keep any images already cached for 'key' from being evicted.
+- (void)makeResidentForKey:(NSString *)key;
+
 @end
 
 NS_ASSUME_NONNULL_END

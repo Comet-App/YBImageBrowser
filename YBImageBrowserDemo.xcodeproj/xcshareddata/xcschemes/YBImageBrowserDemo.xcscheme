@@ -38,16 +38,6 @@
                ReferencedContainer = "container:YBImageBrowserDemo.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "23B3271E22A768F6008BFF5D"
-               BuildableName = "YBImageBrowserDemoUITests.xctest"
-               BlueprintName = "YBImageBrowserDemoUITests"
-               ReferencedContainer = "container:YBImageBrowserDemo.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
       <MacroExpansion>
          <BuildableReference

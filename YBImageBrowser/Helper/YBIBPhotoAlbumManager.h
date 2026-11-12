@@ -13,9 +13,25 @@ NS_ASSUME_NONNULL_BEGIN
 @interface YBIBPhotoAlbumManager : NSObject
 
 /**
- Get photo album authorization.
+ Get photo album authorization (add-only on iOS 14+, which is all that saving needs).
+ Callbacks are on the main thread.
  */
 + (void)getPhotoAlbumAuthorizationSuccess:(void(^)(void))success failed:(void(^)(void))failed;
+
+/**
+ Save image data (keeps GIF/APNG/HEIC data intact) to the photo album. Completion is on the main thread.
+ */
++ (void)saveImageData:(NSData *)data completion:(void(^)(NSError * _Nullable error))completion;
+
+/**
+ Save an image to the photo album. Completion is on the main thread.
+ */
++ (void)saveImage:(UIImage *)image completion:(void(^)(NSError * _Nullable error))completion;
+
+/**
+ Save the video file at 'fileURL' to the photo album. Completion is on the main thread.
+ */
++ (void)saveVideoWithFileURL:(NSURL *)fileURL completion:(void(^)(NSError * _Nullable error))completion;
 
 /**
  Get 'AVAsset' by 'PHAsset' asynchronously, callback is in child thread.

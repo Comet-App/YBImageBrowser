@@ -15,7 +15,6 @@
 #import "YBIBImageCache+Internal.h"
 #import "YBIBSentinel.h"
 #import "YBIBCopywriter.h"
-#import <AssetsLibrary/AssetsLibrary.h>
 
 extern CGImageRef YYCGImageCreateDecodedCopy(CGImageRef imageRef, BOOL decodeForDisplay);
 
@@ -26,6 +25,51 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
         queue = dispatch_queue_create("com.yangbo.imagebrowser.imageprocessing", DISPATCH_QUEUE_CONCURRENT);
     });
     return queue;
+}
+
+/// Maps a point in the displayed (oriented) image to the stored pixel data, both in logical points.
+static CGPoint YBIBRawPointForDisplayPoint(CGPoint p, CGSize displaySize, UIImageOrientation orientation) {
+    CGFloat w = displaySize.width, h = displaySize.height;
+    CGPoint raw;
+    CGFloat rawWidth;
+    switch (orientation) {
+        case UIImageOrientationDown:
+        case UIImageOrientationDownMirrored:
+            raw = CGPointMake(w - p.x, h - p.y);
+            rawWidth = w;
+            break;
+        case UIImageOrientationLeft:
+        case UIImageOrientationLeftMirrored:
+            raw = CGPointMake(h - p.y, p.x);
+            rawWidth = h;
+            break;
+        case UIImageOrientationRight:
+        case UIImageOrientationRightMirrored:
+            raw = CGPointMake(p.y, w - p.x);
+            rawWidth = h;
+            break;
+        default:
+            raw = p;
+            rawWidth = w;
+            break;
+    }
+    switch (orientation) {
+        case UIImageOrientationUpMirrored:
+        case UIImageOrientationDownMirrored:
+        case UIImageOrientationLeftMirrored:
+        case UIImageOrientationRightMirrored:
+            raw.x = rawWidth - raw.x;
+            break;
+        default: break;
+    }
+    return raw;
+}
+
+CGRect YBIBPixelRectForDisplayRect(CGRect rect, CGSize displaySize, CGFloat scale, UIImageOrientation orientation) {
+    CGPoint a = YBIBRawPointForDisplayPoint(CGPointMake(CGRectGetMinX(rect), CGRectGetMinY(rect)), displaySize, orientation);
+    CGPoint b = YBIBRawPointForDisplayPoint(CGPointMake(CGRectGetMaxX(rect), CGRectGetMaxY(rect)), displaySize, orientation);
+    CGRect raw = CGRectMake(MIN(a.x, b.x), MIN(a.y, b.y), ABS(a.x - b.x), ABS(a.y - b.y));
+    return CGRectApplyAffineTransform(raw, CGAffineTransformMakeScale(scale, scale));
 }
 
 @implementation YBIBImageData {
@@ -114,6 +158,12 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
     self.loadingStatus = YBIBImageLoadingStatusCompressing;
     __weak typeof(self) wSelf = self;
     CGSize size = [self bestSizeOfCompressing];
+    if (size.width <= 0 || size.height <= 0) {
+        // Drawing into an empty context throws on iOS 17+; show the original instead.
+        self.loadingStatus = YBIBImageLoadingStatusNone;
+        [self.delegate yb_imageData:self readyForImage:self.originImage];
+        return;
+    }
 
     YBIB_DISPATCH_ASYNC(YBIBImageProcessingQueue(), ^{
         if (self->_freezing) {
@@ -384,30 +434,10 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
             return;
         }
         CGFloat scale = self.originImage.scale;
-        CGFloat width = self.originImage.size.width;
-        CGFloat height = self.originImage.size.height;
-        
-        BOOL reverseWidthHeight = NO;
-        CGAffineTransform transform = CGAffineTransformIdentity;
-        switch (self.originImage.imageOrientation) {
-            case UIImageOrientationDown:
-            case UIImageOrientationDownMirrored:
-                CGAffineTransformTranslate(CGAffineTransformMakeRotation(-M_PI), -width, -height);
-                break;
-            case UIImageOrientationLeft:
-            case UIImageOrientationLeftMirrored:
-                transform = CGAffineTransformTranslate(CGAffineTransformMakeRotation(M_PI_2), 0, -height);
-                reverseWidthHeight = YES;
-                break;
-            case UIImageOrientationRight:
-            case UIImageOrientationRightMirrored:
-                transform = CGAffineTransformTranslate(CGAffineTransformMakeRotation(-M_PI_2), -width, 0);
-                reverseWidthHeight = YES;
-                break;
-            default: break;
-        }
-        transform = CGAffineTransformScale(transform, scale, scale);
-        CGRect correctRect = CGRectApplyAffineTransform(rect, transform);
+        UIImageOrientation orientation = self.originImage.imageOrientation;
+        BOOL reverseWidthHeight = orientation == UIImageOrientationLeft || orientation == UIImageOrientationLeftMirrored || orientation == UIImageOrientationRight || orientation == UIImageOrientationRightMirrored;
+
+        CGRect correctRect = YBIBPixelRectForDisplayRect(rect, self.originImage.size, scale, orientation);
         CGImageRef cgImage = CGImageCreateWithImageInRect(self.originImage.CGImage, correctRect);
         
         if (isCancelled()) {
@@ -419,7 +449,7 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
         CGFloat cgHeight = reverseWidthHeight ? CGImageGetWidth(cgImage) : CGImageGetHeight(cgImage);
         CGSize size = [self bestSizeOfCuttingWithOriginSize:CGSizeMake(cgWidth / scale, cgHeight / scale)];
         UIImage *tmpImage = [UIImage imageWithCGImage:cgImage scale:self.originImage.scale orientation:self.originImage.imageOrientation];
-        if (isCancelled()) {
+        if (isCancelled() || !cgImage || size.width <= 0 || size.height <= 0) {
             complete(nil);
             if (cgImage) CGImageRelease(cgImage);
             return;
@@ -554,10 +584,6 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
     }
 }
 
-- (void)UIImageWriteToSavedPhotosAlbum_completedWithImage:(UIImage *)image error:(NSError *)error context:(void *)context {
-    [self saveToPhotoAlbumCompleteWithError:error];
-}
-
 - (YBIBImageCache *)imageCache {
     return self.yb_backView.ybib_imageCache;
 }
@@ -596,12 +622,14 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
 
 - (void)yb_saveToPhotoAlbum {
     void(^saveData)(NSData *) = ^(NSData * _Nonnull data){
-        [[ALAssetsLibrary new] writeImageDataToSavedPhotosAlbum:data metadata:nil completionBlock:^(NSURL *assetURL, NSError *error) {
+        [YBIBPhotoAlbumManager saveImageData:data completion:^(NSError * _Nullable error) {
             [self saveToPhotoAlbumCompleteWithError:error];
         }];
     };
     void(^saveImage)(UIImage *) = ^(UIImage * _Nonnull image){
-        UIImageWriteToSavedPhotosAlbum(image, self, @selector(UIImageWriteToSavedPhotosAlbum_completedWithImage:error:context:), NULL);
+        [YBIBPhotoAlbumManager saveImage:image completion:^(NSError * _Nullable error) {
+            [self saveToPhotoAlbumCompleteWithError:error];
+        }];
     };
     void(^unableToSave)(void) = ^(){
         [self.yb_auxiliaryViewHandler() yb_showIncorrectToastWithContainer:self.yb_containerView text:[YBIBCopywriter sharedCopywriter].unableToSave];
@@ -637,6 +665,8 @@ static dispatch_queue_t YBIBImageProcessingQueue(void) {
 - (void)setDelegate:(id<YBIBImageDataDelegate>)delegate {
     _delegate = delegate;
     if (delegate) {
+        // Images preloaded without a delegate are evictable; pin them while displayed.
+        [self.imageCache makeResidentForKey:self.cacheKey];
         [self loadData];
     } else {
         _freezing = YES;

@@ -7,18 +7,18 @@
 //
 
 #import "YBIBSentinel.h"
-#import <libkern/OSAtomic.h>
+#import <stdatomic.h>
 
 @implementation YBIBSentinel {
-    int32_t _value;
+    _Atomic(int32_t) _value;
 }
 
 - (int32_t)value {
-    return _value;
+    return atomic_load_explicit(&_value, memory_order_relaxed);
 }
 
 - (int32_t)increase {
-    return OSAtomicIncrement32(&_value);
+    return atomic_fetch_add_explicit(&_value, 1, memory_order_relaxed) + 1;
 }
 
 @end

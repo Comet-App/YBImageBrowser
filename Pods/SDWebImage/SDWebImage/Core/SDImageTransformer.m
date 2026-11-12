@@ -7,7 +7,8 @@
  */
 
 #import "SDImageTransformer.h"
-#import "UIColor+HexString.h"
+#import "UIColor+SDHexString.h"
+#import "SDAssociatedObject.h"
 #if SD_UIKIT || SD_MAC
 #import <CoreImage/CoreImage.h>
 #endif
@@ -36,6 +37,11 @@ NSString * _Nullable SDTransformedKeyForKey(NSString * _Nullable key, NSString *
     } else {
         return [[key stringByAppendingString:SDImageTransformerKeySeparator] stringByAppendingString:transformerKey];
     }
+}
+
+NSString * _Nullable SDThumbnailedKeyForKey(NSString * _Nullable key, CGSize thumbnailPixelSize, BOOL preserveAspectRatio) {
+    NSString *thumbnailKey = [NSString stringWithFormat:@"Thumbnail({%f,%f},%d)", thumbnailPixelSize.width, thumbnailPixelSize.height, preserveAspectRatio];
+    return SDTransformedKeyForKey(key, thumbnailKey);
 }
 
 @interface SDImagePipelineTransformer ()
@@ -68,15 +74,52 @@ NSString * _Nullable SDTransformedKeyForKey(NSString * _Nullable key, NSString *
     return [cacheKeys componentsJoinedByString:SDImageTransformerKeySeparator];
 }
 
+- (BOOL)preserveImageMetadata {
+    return NO; // We handle this logic inside `transformedImageWithImage` below
+}
+
 - (UIImage *)transformedImageWithImage:(UIImage *)image forKey:(NSString *)key {
     if (!image) {
         return nil;
     }
     UIImage *transformedImage = image;
     for (id<SDImageTransformer> transformer in self.transformers) {
-        transformedImage = [transformer transformedImageWithImage:transformedImage forKey:key];
+        UIImage *newImage = [transformer transformedImageWithImage:transformedImage forKey:key];
+        // Handle each transformer's preserveImageMetadata choice
+        BOOL preserveImageMetadata = YES;
+        if ([transformer respondsToSelector:@selector(preserveImageMetadata)]) {
+            preserveImageMetadata = transformer.preserveImageMetadata;
+        }
+        if (preserveImageMetadata) {
+            SDImageCopyAssociatedObject(transformedImage, newImage);
+        }
+        transformedImage = newImage;
     }
     return transformedImage;
+}
+
+@end
+
+@implementation SDImageBaseTransformer
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _preserveImageMetadata = YES;
+    }
+    return self;
+}
+
+- (NSString *)transformerKey {
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                   reason:[NSString stringWithFormat:@"For `SDImageBaseTransformer` subclass, you must override %@ method", NSStringFromSelector(_cmd)]
+                                 userInfo:nil];
+}
+
+- (nullable UIImage *)transformedImageWithImage:(nonnull UIImage *)image forKey:(nonnull NSString *)key {
+    @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                   reason:[NSString stringWithFormat:@"For `SDImageBaseTransformer` subclass, you must override %@ method", NSStringFromSelector(_cmd)]
+                                 userInfo:nil];
 }
 
 @end
@@ -240,27 +283,33 @@ NSString * _Nullable SDTransformedKeyForKey(NSString * _Nullable key, NSString *
 @interface SDImageTintTransformer ()
 
 @property (nonatomic, strong, nonnull) UIColor *tintColor;
+@property (nonatomic, assign) CGBlendMode blendMode;
 
 @end
 
 @implementation SDImageTintTransformer
 
 + (instancetype)transformerWithColor:(UIColor *)tintColor {
+    return [self transformerWithColor:tintColor blendMode:kCGBlendModeSourceIn];
+}
+
++ (instancetype)transformerWithColor:(UIColor *)tintColor blendMode:(CGBlendMode)blendMode {
     SDImageTintTransformer *transformer = [SDImageTintTransformer new];
     transformer.tintColor = tintColor;
+    transformer.blendMode = blendMode;
     
     return transformer;
 }
 
 - (NSString *)transformerKey {
-    return [NSString stringWithFormat:@"SDImageTintTransformer(%@)", self.tintColor.sd_hexString];
+    return [NSString stringWithFormat:@"SDImageTintTransformer(%@,%d)", self.tintColor.sd_hexString, self.blendMode];
 }
 
 - (UIImage *)transformedImageWithImage:(UIImage *)image forKey:(NSString *)key {
     if (!image) {
         return nil;
     }
-    return [image sd_tintedImageWithColor:self.tintColor];
+    return [image sd_tintedImageWithColor:self.tintColor blendMode:self.blendMode];
 }
 
 @end

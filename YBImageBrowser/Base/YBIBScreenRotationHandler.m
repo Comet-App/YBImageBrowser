@@ -68,7 +68,7 @@ static NSUInteger const kMaskNull = 10000;
 #pragma mark - public
 
 - (void)startObserveStatusBarOrientation {
-    self.currentOrientation = (UIDeviceOrientation)UIApplication.sharedApplication.statusBarOrientation;
+    self.currentOrientation = (UIDeviceOrientation)YBIBInterfaceOrientation();
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidChangedStatusBarOrientationNotification:) name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationWillChangeStatusBarOrientationNotification:) name:UIApplicationWillChangeStatusBarOrientationNotification object:nil];
 }
@@ -164,7 +164,7 @@ static NSUInteger const kMaskNull = 10000;
     // Record current page number before transforming.
     NSInteger currentPage = _browser.currentPage;
     
-    UIDeviceOrientation statusBarOrientation = (UIDeviceOrientation)UIApplication.sharedApplication.statusBarOrientation;
+    UIDeviceOrientation statusBarOrientation = (UIDeviceOrientation)YBIBInterfaceOrientation();
     CGFloat angleStatusBarToExpect = YBIBRotationAngle(statusBarOrientation, expectOrientation);
     CGFloat angleCurrentToExpect = YBIBRotationAngle(_currentOrientation, expectOrientation);
     CGRect expectBounds = (CGRect){CGPointZero, [self containerSizeWithOrientation:expectOrientation]};
@@ -216,7 +216,7 @@ static NSUInteger const kMaskNull = 10000;
 - (void)applicationDidChangedStatusBarOrientationNotification:(NSNotification *)noti {
     if ([self supportedOnlyOneSystemOrientation]) return;
     
-    UIDeviceOrientation expectOrientation = (UIDeviceOrientation)UIApplication.sharedApplication.statusBarOrientation;
+    UIDeviceOrientation expectOrientation = (UIDeviceOrientation)YBIBInterfaceOrientation();
     UICollectionViewCell<YBIBCellProtocol> *centerCell = (UICollectionViewCell<YBIBCellProtocol> *)self->_browser.collectionView.centerCell;
     
     [self orientationChangeAnimationWithExpectOrientation:expectOrientation centerCell:centerCell];

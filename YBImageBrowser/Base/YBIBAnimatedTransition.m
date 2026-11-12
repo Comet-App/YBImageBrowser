@@ -7,6 +7,7 @@
 //
 
 #import "YBIBAnimatedTransition.h"
+#import "YBIBUtilities.h"
 
 extern CGFloat YBIBRotationAngle(UIDeviceOrientation startOrientation, UIDeviceOrientation endOrientation);
 
@@ -28,7 +29,7 @@ extern CGFloat YBIBRotationAngle(UIDeviceOrientation startOrientation, UIDeviceO
 - (void)yb_showTransitioningWithContainer:(UIView *)container startView:(__kindof UIView *)startView startImage:(UIImage *)startImage endFrame:(CGRect)endFrame orientation:(UIDeviceOrientation)orientation completion:(void (^)(void))completion {
     YBIBTransitionType type = self.showType;
     if (type == YBIBTransitionTypeCoherent) {
-        if (CGRectIsEmpty(endFrame) || !startView || orientation != (UIDeviceOrientation)UIApplication.sharedApplication.statusBarOrientation) {
+        if (CGRectIsEmpty(endFrame) || !startView || orientation != (UIDeviceOrientation)YBIBInterfaceOrientation()) {
             type = YBIBTransitionTypeFade;
         }
     }
@@ -133,7 +134,7 @@ extern CGFloat YBIBRotationAngle(UIDeviceOrientation startOrientation, UIDeviceO
                 startView.contentMode = endView.contentMode;
                 
                 CGAffineTransform transform = startView.transform;
-                UIDeviceOrientation statusBarOrientation = (UIDeviceOrientation)UIApplication.sharedApplication.statusBarOrientation;
+                UIDeviceOrientation statusBarOrientation = (UIDeviceOrientation)YBIBInterfaceOrientation();
                 if (orientation != statusBarOrientation) {
                     transform = CGAffineTransformRotate(transform, YBIBRotationAngle(orientation, statusBarOrientation));
                 }

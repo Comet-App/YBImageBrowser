@@ -149,7 +149,10 @@
 #pragma mark - public
 
 - (void)show {
-    [self showToView:[UIApplication sharedApplication].keyWindow];
+    UIWindow *window = YBIBKeyWindow();
+    NSAssert(window, @"YBImageBrowser: no key window to show in; use '-showToView:' instead.");
+    if (!window) return;
+    [self showToView:window];
 }
 
 - (void)showToView:(UIView *)view {
@@ -167,6 +170,8 @@
     
     [self.rotationHandler configContainerSize:containerSize];
     
+    _currentPage = [self clampedPage:_currentPage];
+    
     [self.dataMediator preloadWithPage:self.currentPage];
     
     __kindof UIView *startView;
@@ -178,7 +183,7 @@
         self.hiddenProjectiveView = startView;
         if ([startView isKindOfClass:UIImageView.class]) {
             startImage = ((UIImageView *)startView).image;
-        } else {
+        } else if (startView) {
             startImage = YBIBSnapshotView(startView);
         }
     }
@@ -195,6 +200,9 @@
 }
 
 - (void)hide {
+    // Ignore repeated calls (e.g. a tool view and a gesture both hiding) while a transition runs.
+    if (self.isTransitioning || !self.superview) return;
+    
     __kindof UIView *startView;
     __kindof UIView *endView;
     UICollectionViewCell<YBIBCellProtocol> *cell = (UICollectionViewCell<YBIBCellProtocol> *)self.collectionView.centerCell;
@@ -467,11 +475,15 @@
     }
     return _collectionView;
 }
+- (NSInteger)clampedPage:(NSInteger)page {
+    NSInteger count = self.dataMediator.numberOfCells;
+    // With no data yet (e.g. 'currentPage' set before the data source), keep the request and clamp when showing.
+    if (count <= 0) return MAX(page, 0);
+    return MAX(0, MIN(page, count - 1));
+}
+
 - (void)setCurrentPage:(NSInteger)currentPage {
-    NSInteger maxPage = self.dataMediator.numberOfCells - 1;
-    if (currentPage > maxPage) {
-        currentPage = maxPage;
-    }
+    currentPage = [self clampedPage:currentPage];
     _currentPage = currentPage;
     if (self.collectionView.superview) {
         [self collectionViewScrollToPage:currentPage];

@@ -25,7 +25,7 @@
     options.resizeMode = PHImageRequestOptionsResizeModeNone;
     // Only when this property is YES, the callback will in child thread.
     options.synchronous = YES;
-    [[PHImageManager defaultManager] requestImageDataForAsset:phAsset options:options resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
+    [[PHImageManager defaultManager] requestImageDataAndOrientationForAsset:phAsset options:options resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, CGImagePropertyOrientation orientation, NSDictionary * _Nullable info) {
         BOOL complete = ![[info objectForKey:PHImageCancelledKey] boolValue] && ![info objectForKey:PHImageErrorKey] && ![[info objectForKey:PHImageResultIsDegradedKey] boolValue];
         if (complete && imageData) {
             completion(imageData);
@@ -35,31 +35,76 @@
     }];
 }
 
-+ (void)getPhotoAlbumAuthorizationSuccess:(void(^)(void))success failed:(void(^)(void))failed {
-    PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatus];
-    switch (status) {
-        case PHAuthorizationStatusDenied:
-            if (failed) failed();
-            break;
-        case PHAuthorizationStatusRestricted:
-            if (failed) failed();
-            break;
-        case PHAuthorizationStatusNotDetermined: {
-            [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status){
-                YBIB_DISPATCH_ASYNC_MAIN(^{
-                    if (status == PHAuthorizationStatusAuthorized) {
-                        if (success) success();
-                    } else {
-                        if (failed) failed();
-                    }
-                })
-            }];
-        }
-            break;
-        case PHAuthorizationStatusAuthorized:
-            if (success) success();
-            break;
+#pragma mark - authorization
+
++ (BOOL)isAuthorizedStatus:(PHAuthorizationStatus)status {
+    if (status == PHAuthorizationStatusAuthorized) return YES;
+    if (@available(iOS 14.0, *)) {
+        if (status == PHAuthorizationStatusLimited) return YES;
     }
+    return NO;
+}
+
++ (void)getPhotoAlbumAuthorizationSuccess:(void(^)(void))success failed:(void(^)(void))failed {
+    void(^finish)(PHAuthorizationStatus) = ^(PHAuthorizationStatus status) {
+        YBIB_DISPATCH_ASYNC_MAIN(^{
+            if ([self isAuthorizedStatus:status]) {
+                if (success) success();
+            } else {
+                if (failed) failed();
+            }
+        })
+    };
+
+    // Saving only needs add-only access, which needs 'NSPhotoLibraryAddUsageDescription' in 'Info.plist'.
+    PHAuthorizationStatus status;
+    if (@available(iOS 14.0, *)) {
+        status = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelAddOnly];
+    } else {
+        status = [PHPhotoLibrary authorizationStatus];
+    }
+    if (status != PHAuthorizationStatusNotDetermined) {
+        finish(status);
+        return;
+    }
+    if (@available(iOS 14.0, *)) {
+        [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:finish];
+    } else {
+        [PHPhotoLibrary requestAuthorization:finish];
+    }
+}
+
+#pragma mark - save
+
++ (void)performSaveChanges:(dispatch_block_t)changes completion:(void(^)(NSError * _Nullable error))completion {
+    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:changes completionHandler:^(BOOL success, NSError * _Nullable error) {
+        YBIB_DISPATCH_ASYNC_MAIN(^{
+            if (!completion) return;
+            if (success) {
+                completion(nil);
+            } else {
+                completion(error ?: [NSError errorWithDomain:@"YBIBPhotoAlbumManager" code:-1 userInfo:nil]);
+            }
+        })
+    }];
+}
+
++ (void)saveImageData:(NSData *)data completion:(void(^)(NSError * _Nullable error))completion {
+    [self performSaveChanges:^{
+        [[PHAssetCreationRequest creationRequestForAsset] addResourceWithType:PHAssetResourceTypePhoto data:data options:nil];
+    } completion:completion];
+}
+
++ (void)saveImage:(UIImage *)image completion:(void(^)(NSError * _Nullable error))completion {
+    [self performSaveChanges:^{
+        [PHAssetChangeRequest creationRequestForAssetFromImage:image];
+    } completion:completion];
+}
+
++ (void)saveVideoWithFileURL:(NSURL *)fileURL completion:(void(^)(NSError * _Nullable error))completion {
+    [self performSaveChanges:^{
+        [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:fileURL];
+    } completion:completion];
 }
 
 @end

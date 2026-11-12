@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
 
   s.author       = { "杨波" => "1106355439@qq.com" }
 
-  s.platform     = :ios, "8.0"
+  s.platform     = :ios, "13.0"
 
   s.source       = { :git => "https://github.com/indulgeIn/YBImageBrowser.git", :tag => "#{s.version}" }
 

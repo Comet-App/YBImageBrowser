@@ -35,6 +35,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)play;
 
+/// Re-enable the slider after a seek finished, failed or was skipped.
+- (void)finishSeeking;
+
 + (CGFloat)defaultHeight;
 
 @property (nonatomic, assign, readonly) BOOL isTouchInside;

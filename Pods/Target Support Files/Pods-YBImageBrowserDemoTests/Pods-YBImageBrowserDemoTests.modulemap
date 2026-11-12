@@ -1,0 +1,6 @@
+framework module Pods_YBImageBrowserDemoTests {
+  umbrella header "Pods-YBImageBrowserDemoTests-umbrella.h"
+
+  export *
+  module * { export * }
+}

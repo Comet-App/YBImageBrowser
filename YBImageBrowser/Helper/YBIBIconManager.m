@@ -9,7 +9,7 @@
 #import "YBIBIconManager.h"
 
 // The best order for path scale search.
-static NSArray *_NSBundlePreferredScales() {
+static NSArray *_NSBundlePreferredScales(void) {
     static NSArray *scales;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

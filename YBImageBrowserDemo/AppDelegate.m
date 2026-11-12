@@ -9,6 +9,8 @@
 #import "AppDelegate.h"
 #import "MainController.h"
 #import "MainNavigationController.h"
+#import "YBImageBrowser.h"
+#import "YBIBVideoData.h"
 
 @interface AppDelegate ()
 
@@ -26,7 +28,32 @@
     _window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     _window.rootViewController = nvc;
     [_window makeKeyAndVisible];
+    [self showSmokeTestBrowserIfNeeded];
     return YES;
+}
+
+/// Debug hook: launch with `-YBIBSmokeTestPage <n>` to open a browser of local media on page n,
+/// so the browser can be checked (screenshots, automation) without tapping through the demo.
+- (void)showSmokeTestBrowserIfNeeded {
+    NSString *pageArg = [[NSUserDefaults standardUserDefaults] stringForKey:@"YBIBSmokeTestPage"];
+    if (pageArg.length == 0) return;
+
+    NSMutableArray *datas = [NSMutableArray array];
+    for (NSString *name in @[@"localImage0.jpg", @"localImage1.gif", @"localBigImage0.jpeg", @"localLongImage0.jpeg"]) {
+        YBIBImageData *data = [YBIBImageData new];
+        data.imageName = name;
+        [datas addObject:data];
+    }
+    YBIBVideoData *video = [YBIBVideoData new];
+    video.videoURL = [[NSBundle mainBundle] URLForResource:@"localVideo0" withExtension:@"mp4"];
+    [datas addObject:video];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        YBImageBrowser *browser = [YBImageBrowser new];
+        browser.dataSourceArray = datas;
+        browser.currentPage = pageArg.integerValue;
+        [browser show];
+    });
 }
 
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window {

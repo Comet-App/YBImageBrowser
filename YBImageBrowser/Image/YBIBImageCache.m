@@ -70,7 +70,8 @@ static void *YBIBImageCacheKey = &YBIBImageCacheKey;
 - (void)setImage:(UIImage *)image type:(YBIBImageCacheType)type forKey:(NSString *)key resident:(BOOL)resident {
     YBIBImageCachePack *pack = [_imageCache objectForKey:key];
     if (!pack) {
-        pack = [YBIBImageCachePack new];
+        // Reuse a resident pack, so the other image type stored in it is not lost.
+        pack = [_residentCache objectForKey:key] ?: [YBIBImageCachePack new];
         [_imageCache setObject:pack forKey:key];
     }
     switch (type) {
@@ -81,7 +82,10 @@ static void *YBIBImageCacheKey = &YBIBImageCacheKey;
             pack.compressedImage = image;
             break;
     }
-    [_residentCache setObject:pack forKey:key];
+    // Only resident images survive 'NSCache' eviction; others must obey 'imageCacheCountLimit'.
+    if (resident) {
+        [_residentCache setObject:pack forKey:key];
+    }
 }
 
 - (UIImage *)imageForKey:(NSString *)key type:(YBIBImageCacheType)type {
@@ -100,6 +104,11 @@ static void *YBIBImageCacheKey = &YBIBImageCacheKey;
 
 - (void)removeResidentForKey:(NSString *)key {
     [_residentCache removeObjectForKey:key];
+}
+
+- (void)makeResidentForKey:(NSString *)key {
+    YBIBImageCachePack *pack = [_imageCache objectForKey:key];
+    if (pack) [_residentCache setObject:pack forKey:key];
 }
 
 #pragma mark - setter

@@ -28,7 +28,14 @@ CFAbsoluteTime linkTime = (CFAbsoluteTimeGetCurrent() - startTime); \
 NSLog(@"%@ Time-Consuming: %fms", KEY, linkTime * 1000.0);
 
 
-UIWindow * _Nonnull YBIBNormalWindow(void);
+/// The key window of the foreground-active scene (scene-aware; works with multiple iPad windows).
+UIWindow * _Nullable YBIBKeyWindow(void);
+
+/// The key window if it is at normal level, otherwise a normal-level window of the same scene.
+UIWindow * _Nullable YBIBNormalWindow(void);
+
+/// Interface orientation of the key window's scene (replaces the deprecated 'statusBarOrientation').
+UIInterfaceOrientation YBIBInterfaceOrientation(void);
 
 UIViewController * _Nullable YBIBTopController(void);
 UIViewController * _Nullable YBIBTopControllerByWindow(UIWindow *);
@@ -39,7 +46,7 @@ BOOL YBIBIsIphoneXSeries(void);
 CGFloat YBIBStatusbarHeight(void);
 CGFloat YBIBSafeAreaBottomHeight(void);
 
-UIImage *YBIBSnapshotView(UIView *);
+UIImage * _Nullable YBIBSnapshotView(UIView * _Nullable view);
 
 /// This is orientation of 'YBImageBrowser' not 'UIDevice'.
 UIEdgeInsets YBIBPaddingByBrowserOrientation(UIDeviceOrientation);

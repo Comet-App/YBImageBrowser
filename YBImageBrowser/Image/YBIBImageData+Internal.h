@@ -22,6 +22,12 @@ typedef NS_ENUM(NSInteger, YBIBImageLoadingStatus) {
 
 @class YBIBImageData;
 
+/**
+ Converts a rect in the displayed (orientation-applied) image, in logical points,
+ to the matching rect in the image's stored 'CGImage' pixels. Handles all 8 orientations.
+ */
+FOUNDATION_EXTERN CGRect YBIBPixelRectForDisplayRect(CGRect rect, CGSize displaySize, CGFloat scale, UIImageOrientation orientation);
+
 @protocol YBIBImageDataDelegate <NSObject>
 @required
 

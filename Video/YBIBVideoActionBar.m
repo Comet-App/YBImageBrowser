@@ -97,8 +97,12 @@
 }
 
 - (void)play {
-    _dragging = NO;
+    [self finishSeeking];
     self.playButton.selected = YES;
+}
+
+- (void)finishSeeking {
+    _dragging = NO;
     self.slider.userInteractionEnabled = YES;
 }
 
@@ -106,7 +110,7 @@
 
 + (NSAttributedString *)timeformatFromSeconds:(NSInteger)seconds {
     NSInteger hour = seconds / 3600, min = (seconds % 3600) / 60, sec = seconds % 60;
-    NSString *text = seconds > 3600 ? [NSString stringWithFormat:@"%02ld:%02ld:%02ld", (long)hour, (long)min, (long)sec] : [NSString stringWithFormat:@"%02ld:%02ld", (long)min, (long)sec];
+    NSString *text = seconds >= 3600 ? [NSString stringWithFormat:@"%02ld:%02ld:%02ld", (long)hour, (long)min, (long)sec] : [NSString stringWithFormat:@"%02ld:%02ld", (long)min, (long)sec];
     
     NSShadow *shadow = [NSShadow new];
     shadow.shadowBlurRadius = 4;

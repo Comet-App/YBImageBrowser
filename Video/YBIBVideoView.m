@@ -23,6 +23,7 @@
     AVPlayer *_player;
     AVPlayerItem *_playerItem;
     AVPlayerLayer *_playerLayer;
+    id _timeObserver;
     BOOL _active;
 }
 
@@ -74,8 +75,8 @@
 - (void)reset {
     [self removeObserverForPlayer];
     
-    // If set '_playerLayer.player = nil' or '_player = nil', can not cancel observeing of 'addPeriodicTimeObserverForInterval'.
     [_player pause];
+    _player = nil;
     _playerItem = nil;
     [_playerLayer removeFromSuperlayer];
     _playerLayer = nil;
@@ -100,14 +101,21 @@
 #pragma mark - private
 
 - (void)videoJumpWithScale:(float)scale {
-    CMTime startTime = CMTimeMakeWithSeconds(scale, _player.currentTime.timescale);
+    // 'currentTime.timescale' can be 0 before the item is ready, which made the seek time invalid.
+    CMTime startTime = CMTimeMakeWithSeconds(scale, NSEC_PER_SEC);
     AVPlayer *tmpPlayer = _player;
     
-    if (CMTIME_IS_INDEFINITE(startTime) || CMTIME_IS_INVALID(startTime)) return;
+    if (!_player || CMTIME_IS_INDEFINITE(startTime) || CMTIME_IS_INVALID(startTime)) {
+        [self.actionBar finishSeeking];
+        return;
+    }
     [_player seekToTime:startTime toleranceBefore:CMTimeMake(1, 1000) toleranceAfter:CMTimeMake(1, 1000) completionHandler:^(BOOL finished) {
-        if (finished && tmpPlayer == self->_player) {
-            [self startPlay];
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.actionBar finishSeeking];
+            if (finished && tmpPlayer == self->_player) {
+                [self startPlay];
+            }
+        });
     }];
 }
 
@@ -136,6 +144,9 @@
 - (void)startPlay {
     if (_player) {
         _playing = YES;
+        
+        // Activate audio only when playback starts, so merely showing a video page does not stop other audio.
+        [[AVAudioSession sharedInstance] setActive:YES error:nil];
         
         [_player play];
         [self.actionBar play];
@@ -197,16 +208,21 @@
 - (void)addObserverForPlayer {
     [_playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
     __weak typeof(self) wSelf = self;
-    [_player addPeriodicTimeObserverForInterval:CMTimeMake(1, 1) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
+    _timeObserver = [_player addPeriodicTimeObserverForInterval:CMTimeMake(1, 1) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
         __strong typeof(wSelf) self = wSelf;
         if (!self) return;
-        float currentTime = time.value / time.timescale;
-        [self.actionBar setCurrentValue:currentTime];
+        Float64 currentTime = CMTimeGetSeconds(time);
+        [self.actionBar setCurrentValue:(isnan(currentTime) || isinf(currentTime)) ? 0 : currentTime];
     }];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didPlayToEndTime:) name:AVPlayerItemDidPlayToEndTimeNotification object:_playerItem];
 }
 
 - (void)removeObserverForPlayer {
+    // Every periodic time observer must be removed from the player that added it.
+    if (_timeObserver) {
+        [_player removeTimeObserver:_timeObserver];
+        _timeObserver = nil;
+    }
     [_playerItem removeObserver:self forKeyPath:@"status"];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:_playerItem];
 }
@@ -261,15 +277,12 @@
 - (void)removeObserverForSystem {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationWillResignActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidChangeStatusBarFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionRouteChangeNotification object:nil];
 }
 
 - (void)addObserverForSystem {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationWillResignActive:) name:UIApplicationWillResignActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidBecomeActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didChangeStatusBarFrame) name:UIApplicationDidChangeStatusBarFrameNotification object:nil];
-    [[AVAudioSession sharedInstance] setActive:YES error:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioRouteChangeListenerCallback:)   name:AVAudioSessionRouteChangeNotification object:nil];
 }
 
@@ -280,12 +293,6 @@
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
     _active = YES;
-}
-
-- (void)didChangeStatusBarFrame {
-    if ([UIApplication sharedApplication].statusBarFrame.size.height > YBIBStatusbarHeight()) {
-        [self playerPause];
-    }
 }
 
 - (void)audioRouteChangeListenerCallback:(NSNotification*)notification {
