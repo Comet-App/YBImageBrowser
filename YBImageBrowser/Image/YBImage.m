@@ -179,7 +179,19 @@ static CGFloat _NSStringPathScale(NSString *string) {
         
         YYImageFrame *frame = [decoder frameAtIndex:0 decodeForDisplay:decodeForDisplay];
         UIImage *image = frame.image;
-        if (!image) return nil;
+        if (!image) {
+            // YYImage cannot decode some formats, e.g. WebP when it is built without libwebp; ImageIO can (first frame only).
+            UIImage *systemImage = [UIImage imageWithData:data scale:scale];
+            CGImageRef systemCGImage = systemImage.CGImage;
+            if (!systemCGImage) return nil;
+            BOOL decode = decodeDecision ? decodeDecision(CGSizeMake(CGImageGetWidth(systemCGImage), CGImageGetHeight(systemCGImage)), scale) : YES;
+            CGImageRef decoded = decode ? YYCGImageCreateDecodedCopy(systemCGImage, YES) : NULL;
+            self = [self initWithCGImage:decoded ?: systemCGImage scale:scale orientation:systemImage.imageOrientation];
+            if (decoded) CGImageRelease(decoded);
+            if (!self) return nil;
+            self.yy_isDecodedForDisplay = decoded != NULL;
+            return self;
+        }
         self = [self initWithCGImage:image.CGImage scale:decoder.scale orientation:image.imageOrientation];
         if (!self) return nil;
         _animatedImageType = decoder.type;

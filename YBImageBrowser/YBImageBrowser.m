@@ -17,7 +17,7 @@
 #import "YBIBDefaultWebImageMediator.h"
 #endif
 
-@interface YBImageBrowser () <UICollectionViewDelegate, UICollectionViewDataSource>
+@interface YBImageBrowser () <UICollectionViewDelegateFlowLayout, UICollectionViewDataSource>
 @property (nonatomic, strong) YBIBCollectionView *collectionView;
 @property (nonatomic, strong) YBIBDataMediator *dataMediator;
 @property (nonatomic, strong) YBIBScreenRotationHandler *rotationHandler;
@@ -25,6 +25,10 @@
 
 @implementation YBImageBrowser {
     BOOL _originStatusBarHidden;
+    /// Height / width of each page's content, by page index (continuous mode).
+    NSMutableDictionary<NSNumber *, NSNumber *> *_heightRatios;
+    /// Set while the browser scrolls to a page itself, so the scroll does not overwrite 'currentPage'.
+    BOOL _suppressPageTracking;
 }
 
 #pragma mark - life cycle
@@ -53,6 +57,8 @@
     _auxiliaryViewHandler = [YBIBAuxiliaryViewHandler new];
     _shouldHideStatusBar = YES;
     _autoHideProjectiveView = YES;
+    _scrollMode = YBIBScrollModePaged;
+    _heightRatios = [NSMutableDictionary dictionary];
 #if __has_include("YBIBDefaultWebImageMediator.h")
     _webImageMediator = [YBIBDefaultWebImageMediator new];
 #endif
@@ -102,12 +108,19 @@
     [self.collectionView removeFromSuperview];
     _collectionView = nil;
     [self.dataMediator clear];
+    [_heightRatios removeAllObjects];
     [self.rotationHandler clear];
 }
 
 - (void)collectionViewScrollToPage:(NSInteger)page {
+    _suppressPageTracking = YES;
     [self.collectionView scrollToPage:page];
+    _suppressPageTracking = NO;
     [self pageNumberChanged];
+}
+
+- (BOOL)isContinuous {
+    return self.scrollMode == YBIBScrollModeContinuousVertical;
 }
 
 - (void)pageNumberChanged {
@@ -228,6 +241,13 @@
 
 - (void)reloadData {
     [self.dataMediator clear];
+    [_heightRatios removeAllObjects];
+    if (_collectionView && _collectionView.scrollMode != self.scrollMode) {
+        _collectionView.scrollMode = self.scrollMode;
+        // The flow layout caches which delegate methods exist; re-setting the delegate refreshes that.
+        _collectionView.delegate = nil;
+        _collectionView.delegate = self;
+    }
     NSInteger page = self.currentPage;
     [self.collectionView reloadData];
     self.currentPage = page;
@@ -349,6 +369,8 @@
     if ([obj respondsToSelector:@selector(setYb_cellIsInCenter:)]) {
         [obj setYb_cellIsInCenter:^BOOL{
             __strong typeof(wSelf) self = wSelf;
+            // Pages in continuous mode are never "centred"; this also turns drag-to-dismiss off there.
+            if (!self || [self isContinuous]) return NO;
             CGFloat pageF = self.collectionView.contentOffset.x / self.collectionView.bounds.size.width;
             // '0.001' is admissible error.
             return ABS(pageF - (NSInteger)pageF) <= 0.001;
@@ -384,6 +406,66 @@
     }
 }
 
+- (void)implementPageInfo:(id<YBIBGetBaseInfoProtocol>)obj page:(NSInteger)page {
+    __weak typeof(self) wSelf = self;
+    if ([obj respondsToSelector:@selector(setYb_containerSize:)]) {
+        [obj setYb_containerSize:^CGSize(UIDeviceOrientation orientation) {
+            __strong typeof(wSelf) self = wSelf;
+            if (!self) return CGSizeZero;
+            if ([self isContinuous]) return [self continuousSizeForPage:page];
+            return [self.rotationHandler containerSizeWithOrientation:orientation];
+        }];
+    }
+    if ([obj respondsToSelector:@selector(setYb_contentSizeResolved:)]) {
+        [(id<YBIBDataProtocol>)obj setYb_contentSizeResolved:^(CGSize size) {
+            __strong typeof(wSelf) self = wSelf;
+            if (!self) return;
+            [self contentSizeResolved:size forPage:page];
+        }];
+    }
+}
+
+- (CGSize)continuousSizeForPage:(NSInteger)page {
+    CGSize containerSize = [self.rotationHandler containerSizeWithOrientation:self.rotationHandler.currentOrientation];
+    CGSize boundsSize = _collectionView.bounds.size;
+    CGFloat width = boundsSize.width > 0 ? boundsSize.width : containerSize.width;
+    CGFloat placeholderHeight = boundsSize.height > 0 ? boundsSize.height : containerSize.height;
+    CGFloat ratio = _heightRatios[@(page)].doubleValue;
+    return CGSizeMake(width, YBIBContinuousItemHeight(width, ratio, placeholderHeight, UIScreen.mainScreen.scale));
+}
+
+- (void)contentSizeResolved:(CGSize)size forPage:(NSInteger)page {
+    if (page < 0 || size.width <= 0 || size.height <= 0) return;
+    CGFloat ratio = size.height / size.width;
+    NSNumber *oldRatio = _heightRatios[@(page)];
+    if (oldRatio && ABS(oldRatio.doubleValue - ratio) < 0.0001) return;
+
+    YBIBCollectionView *collectionView = _collectionView;
+    BOOL relayout = [self isContinuous] && collectionView.superview && page < [self.dataMediator numberOfCells];
+    CGRect oldFrame = CGRectNull;
+    if (relayout && collectionView.contentOffset.y > 0) {
+        // Computed from the stored heights: the layout's own attributes are stale while an earlier
+        // invalidation is pending, which happens when several pages resolve in quick succession.
+        CGFloat originY = 0;
+        for (NSInteger i = 0; i < page; ++i) originY += [self continuousSizeForPage:i].height;
+        CGSize oldSize = [self continuousSizeForPage:page];
+        oldFrame = CGRectMake(0, originY, oldSize.width, oldSize.height);
+    }
+
+    _heightRatios[@(page)] = @(ratio);
+    if (!relayout) return;
+
+    // Pages above the visible area push the content down as they grow, so move the offset by the same amount.
+    CGFloat adjustment = YBIBContentOffsetAdjustment(oldFrame, [self continuousSizeForPage:page].height, collectionView.contentOffset.y);
+    UICollectionViewFlowLayoutInvalidationContext *context = [UICollectionViewFlowLayoutInvalidationContext new];
+    context.invalidateFlowLayoutDelegateMetrics = YES;
+    context.contentOffsetAdjustment = CGPointMake(0, adjustment);
+    // The visible content does not move, so the resulting offset change is not a page change.
+    _suppressPageTracking = YES;
+    [collectionView.collectionViewLayout invalidateLayoutWithContext:context];
+    _suppressPageTracking = NO;
+}
+
 #pragma mark - <UICollectionViewDataSource>
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
@@ -396,8 +478,9 @@
     UICollectionViewCell<YBIBCellProtocol> *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[collectionView reuseIdentifierForCellClass:data.yb_classOfCell] forIndexPath:indexPath];
     
     [self implementGetBaseInfoProtocol:cell];
+    [self implementPageInfo:cell page:indexPath.row];
     [self implementOperateBrowserProtocol:cell];
-    
+
     if ([cell respondsToSelector:@selector(setYb_selfPage:)]) {
         [cell setYb_selfPage:^NSInteger{
             return indexPath.row;
@@ -415,9 +498,26 @@
     return cell;
 }
 
+#pragma mark - <UICollectionViewDelegateFlowLayout>
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+    // Paged mode sizes pages with the layout's 'itemSize' (set from the bounds, or by the rotation handler),
+    // which the flow layout ignores once its delegate answers this method.
+    if (aSelector == @selector(collectionView:layout:sizeForItemAtIndexPath:)) return [self isContinuous];
+    return [super respondsToSelector:aSelector];
+}
+
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    return [self continuousSizeForPage:indexPath.item];
+}
+
 #pragma mark - <UICollectionViewDelegate>
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if ([self isContinuous]) {
+        [self continuousScrollViewDidScroll:scrollView];
+        return;
+    }
     CGFloat pageF = scrollView.contentOffset.x / scrollView.bounds.size.width;
     NSInteger page = (NSInteger)(pageF + 0.5);
     
@@ -434,6 +534,19 @@
     if (page < 0 || page > [self.dataMediator numberOfCells] - 1) return;
     if (self.rotationHandler.isRotating) return;
     
+    if (page != _currentPage) {
+        _currentPage = page;
+        [self pageNumberChanged];
+    }
+}
+
+- (void)continuousScrollViewDidScroll:(UIScrollView *)scrollView {
+    // Unlike paged mode, programmatic (animated) scrolls are tracked too.
+    if (_suppressPageTracking || self.rotationHandler.isRotating) return;
+    UICollectionViewLayout *layout = self.collectionView.collectionViewLayout;
+    NSInteger page = YBIBLastFullyVisibleItem([layout layoutAttributesForElementsInRect:scrollView.bounds], scrollView.bounds);
+    if (page == NSNotFound || page > [self.dataMediator numberOfCells] - 1) return;
+
     if (page != _currentPage) {
         _currentPage = page;
         [self pageNumberChanged];
@@ -470,6 +583,7 @@
 - (YBIBCollectionView *)collectionView {
     if (!_collectionView) {
         _collectionView = [YBIBCollectionView new];
+        _collectionView.scrollMode = _scrollMode;
         _collectionView.delegate = self;
         _collectionView.dataSource = self;
     }

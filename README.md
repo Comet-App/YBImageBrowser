@@ -35,6 +35,15 @@ This fork updates YBImageBrowser 3.0.9 to work on current iOS and iPadOS (tested
 - When the hosting controller supports a single orientation, the browser rotates itself again. It now requests device-orientation notifications itself.
 - Photos are saved with `PHPhotoLibrary` instead of `ALAssetsLibrary`, and GIF and APNG data is kept intact.
 - SDWebImage in the demo is updated to 5.21.7.
+- Images YYImage cannot decode, such as WebP when YYImage is built without libwebp, fall back to ImageIO. Animated WebP shows its first frame only.
+
+**Continuous vertical mode (3.1.0)**
+- Set `browser.scrollMode = YBIBScrollModeContinuousVertical` before showing (call `reloadData` after changing it later). Pages are stacked vertically at full width, each as tall as its image, and scroll freely, as in a webtoon reader.
+- Pages use the screen height until their image is decoded. When a page above the screen gets its real height, the scroll position is corrected, so the visible content stays put.
+- `currentPage` follows the last page that is completely on screen. While no page fits on screen completely (a page taller than the screen), it does not change.
+- In this mode there is no zoom, no drag-to-dismiss and no self-rotation.
+- `-[YBIBCollectionView scrollToPage:animated:]` scrolls to a page with or without animation in both modes.
+- Custom data types can call the injected `yb_contentSizeResolved` block (in `YBIBDataProtocol`) with their content size; until then their pages use the placeholder height.
 
 **Development**
 - Unit tests: `xcodebuild test -workspace YBImageBrowserDemo.xcworkspace -scheme YBImageBrowserDemo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:YBImageBrowserDemoTests`
@@ -42,6 +51,7 @@ This fork updates YBImageBrowser 3.0.9 to work on current iOS and iPadOS (tested
   - `-YBIBSmokeTestPage <n>` opens a browser of local media on page `n`.
   - Add `-YBIBSmokeTestRotate YES` to rotate to landscape after it opens.
   - Add `-YBIBSmokeTestAllOrientations YES` to rotate the app itself (the browser follows the controller). Without it, the browser rotates itself.
+  - Add `-YBIBSmokeTestContinuous YES` to open the images in continuous vertical mode; page changes are logged as `[YBIBSmoke] page <n>`.
 
 ##### 相关文章：
 ##### [YBImageBrowser 重构心得：如何优化架构、性能、内存？](https://www.jianshu.com/p/ef53d0094437)

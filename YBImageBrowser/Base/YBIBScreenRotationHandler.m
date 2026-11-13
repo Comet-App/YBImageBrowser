@@ -165,6 +165,8 @@ static NSUInteger const kMaskNull = 10000;
 }
 
 - (void)rotateToDeviceOrientation:(UIDeviceOrientation)expectOrientation {
+    // The transform maths below assume one page per screen.
+    if (_browser.scrollMode == YBIBScrollModeContinuousVertical) return;
     if (![self supportedOnlyOneSystemOrientation]) return;
     if (_browser.isTransitioning || self.rotating) return;
     

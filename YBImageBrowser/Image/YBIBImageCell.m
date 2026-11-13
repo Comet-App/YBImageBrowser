@@ -13,6 +13,7 @@
 #import "YBIBImageData+Internal.h"
 #import "YBIBCopywriter.h"
 #import "YBIBUtilities.h"
+#import "YBIBCollectionView.h"
 
 @interface YBIBImageCell () <YBIBImageDataDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate>
 @end
@@ -88,6 +89,12 @@
 
 #pragma mark - private
 
+/// Pages in continuous mode do not zoom, so the vertical pan always scrolls the page list.
+- (BOOL)isInContinuousBrowser {
+    UICollectionView *collectionView = self.yb_collectionView ? self.yb_collectionView() : nil;
+    return [collectionView isKindOfClass:YBIBCollectionView.class] && ((YBIBCollectionView *)collectionView).scrollMode == YBIBScrollModeContinuousVertical;
+}
+
 - (CGSize)contentSizeWithContainerSize:(CGSize)containerSize imageViewFrame:(CGRect)imageViewFrame {
     return CGSizeMake(MAX(containerSize.width, imageViewFrame.size.width), MAX(containerSize.height, imageViewFrame.size.height));
 }
@@ -110,7 +117,7 @@
     CGSize containerSize = self.yb_containerSize(orientation);
     CGRect imageViewFrame = [data.layout yb_imageViewFrameWithContainerSize:containerSize imageSize:imageSize orientation:orientation];
     CGSize contentSize = [self contentSizeWithContainerSize:containerSize imageViewFrame:imageViewFrame];
-    CGFloat maxZoomScale = imageType == YBIBScrollImageTypeThumb ? 1 : [data.layout yb_maximumZoomScaleWithContainerSize:containerSize imageSize:imageSize orientation:orientation];
+    CGFloat maxZoomScale = imageType == YBIBScrollImageTypeThumb || [self isInContinuousBrowser] ? 1 : [data.layout yb_maximumZoomScaleWithContainerSize:containerSize imageSize:imageSize orientation:orientation];
     
     // 'zoomScale' must set before 'contentSize' and 'imageView.frame'.
     self.imageScrollView.zoomScale = 1;

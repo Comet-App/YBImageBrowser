@@ -12,11 +12,16 @@
 #import "YBImageBrowser.h"
 #import "YBIBVideoData.h"
 
-@interface AppDelegate ()
+@interface AppDelegate () <YBImageBrowserDelegate>
 
 @end
 
 @implementation AppDelegate
+
+/// Logged by the continuous smoke test, so page tracking can be checked in the console.
+- (void)yb_imageBrowser:(YBImageBrowser *)imageBrowser pageChanged:(NSInteger)page data:(id<YBIBDataProtocol>)data {
+    NSLog(@"[YBIBSmoke] page %ld", (long)page);
+}
 
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
@@ -34,22 +39,34 @@
 
 /// Debug hook: launch with `-YBIBSmokeTestPage <n>` to open a browser of local media on page n,
 /// so the browser can be checked (screenshots, automation) without tapping through the demo.
+/// Add `-YBIBSmokeTestContinuous YES` for continuous vertical mode (images only, repeated, no tool views).
 - (void)showSmokeTestBrowserIfNeeded {
     NSString *pageArg = [[NSUserDefaults standardUserDefaults] stringForKey:@"YBIBSmokeTestPage"];
     if (pageArg.length == 0) return;
+    BOOL continuous = [[NSUserDefaults standardUserDefaults] boolForKey:@"YBIBSmokeTestContinuous"];
 
     NSMutableArray *datas = [NSMutableArray array];
-    for (NSString *name in @[@"localImage0.jpg", @"localImage1.gif", @"localBigImage0.jpeg", @"localLongImage0.jpeg"]) {
-        YBIBImageData *data = [YBIBImageData new];
-        data.imageName = name;
-        [datas addObject:data];
+    NSArray *names = @[@"localImage0.jpg", @"localImage1.gif", @"localBigImage0.jpeg", @"localLongImage0.jpeg"];
+    for (NSInteger round = 0; round < (continuous ? 3 : 1); ++round) {
+        for (NSString *name in names) {
+            YBIBImageData *data = [YBIBImageData new];
+            data.imageName = name;
+            [datas addObject:data];
+        }
     }
-    YBIBVideoData *video = [YBIBVideoData new];
-    video.videoURL = [[NSBundle mainBundle] URLForResource:@"localVideo0" withExtension:@"mp4"];
-    [datas addObject:video];
+    if (!continuous) {
+        YBIBVideoData *video = [YBIBVideoData new];
+        video.videoURL = [[NSBundle mainBundle] URLForResource:@"localVideo0" withExtension:@"mp4"];
+        [datas addObject:video];
+    }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         YBImageBrowser *browser = [YBImageBrowser new];
+        if (continuous) {
+            browser.scrollMode = YBIBScrollModeContinuousVertical;
+            browser.toolViewHandlers = @[];
+            browser.delegate = self;
+        }
         browser.dataSourceArray = datas;
         browser.currentPage = pageArg.integerValue;
         [browser show];

@@ -53,14 +53,30 @@
     return identifier;
 }
 
+- (void)setScrollMode:(YBIBScrollMode)scrollMode {
+    BOOL continuous = scrollMode == YBIBScrollModeContinuousVertical;
+    self.layout.scrollMode = scrollMode;
+    self.pagingEnabled = !continuous;
+    self.alwaysBounceVertical = continuous;
+    self.decelerationRate = continuous ? UIScrollViewDecelerationRateNormal : UIScrollViewDecelerationRateFast;
+}
+
+- (YBIBScrollMode)scrollMode {
+    return self.layout.scrollMode;
+}
+
 - (UICollectionViewCell *)centerCell {
     NSArray<UICollectionViewCell *> *cells = [self visibleCells];
     if (cells.count == 0) return nil;
-    
+
+    BOOL continuous = self.scrollMode == YBIBScrollModeContinuousVertical;
     UICollectionViewCell *res = cells[0];
     CGFloat centerX = self.contentOffset.x + (self.bounds.size.width / 2.0);
+    CGFloat centerY = self.contentOffset.y + (self.bounds.size.height / 2.0);
     for (int i = 1; i < cells.count; ++i) {
-        if (ABS(cells[i].center.x - centerX) < ABS(res.center.x - centerX)) {
+        CGFloat distance = continuous ? ABS(cells[i].center.y - centerY) : ABS(cells[i].center.x - centerX);
+        CGFloat best = continuous ? ABS(res.center.y - centerY) : ABS(res.center.x - centerX);
+        if (distance < best) {
             res = cells[i];
         }
     }
@@ -68,7 +84,23 @@
 }
 
 - (void)scrollToPage:(NSInteger)page {
-    [self setContentOffset:CGPointMake(self.bounds.size.width * page, 0)];
+    [self scrollToPage:page animated:NO];
+}
+
+- (void)scrollToPage:(NSInteger)page animated:(BOOL)animated {
+    if (self.scrollMode != YBIBScrollModeContinuousVertical) {
+        CGPoint offset = CGPointMake(self.bounds.size.width * page, 0);
+        animated ? [self setContentOffset:offset animated:YES] : [self setContentOffset:offset];
+        return;
+    }
+    // Item frames depend on the layout, so make sure it is current.
+    [self layoutIfNeeded];
+    if (page < 0 || page >= [self numberOfItemsInSection:0]) return;
+    UICollectionViewLayoutAttributes *attributes = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:page inSection:0]];
+    if (!attributes) return;
+    CGFloat maxOffsetY = MAX(0, self.collectionViewLayout.collectionViewContentSize.height - self.bounds.size.height);
+    CGFloat offsetY = MIN(MAX(0, CGRectGetMinY(attributes.frame)), maxOffsetY);
+    [self setContentOffset:CGPointMake(0, offsetY) animated:animated];
 }
 
 #pragma mark - hit test

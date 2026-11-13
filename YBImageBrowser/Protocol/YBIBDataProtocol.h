@@ -59,6 +59,12 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (BOOL)yb_allowSaveToPhotoAlbum;
 
+/**
+ Injected by the browser. Call it with the content's natural size (any unit; only the aspect ratio is used)
+ once it is known, so continuous mode can size the page. Calling it in paged mode is harmless.
+ */
+@property (nonatomic, copy, nullable) void(^yb_contentSizeResolved)(CGSize size);
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -51,6 +51,13 @@ NS_ASSUME_NONNULL_BEGIN
 /// 分页间距
 @property (nonatomic, assign) CGFloat distanceBetweenPages;
 
+/// How pages scroll. Default is 'YBIBScrollModePaged'.
+/// 'YBIBScrollModeContinuousVertical' stacks pages vertically at full width, each as tall as its image,
+/// with free scrolling and no zoom, drag-to-dismiss or self-rotation. Set it before showing; call 'reloadData' after changing it.
+/// In continuous mode 'currentPage' follows the last page that is completely on screen, and it is not
+/// updated while no page fits on screen completely.
+@property (nonatomic, assign) YBIBScrollMode scrollMode;
+
 /// 当前图片浏览器的方向
 @property (nonatomic, assign, readonly) UIDeviceOrientation currentOrientation;
 

@@ -137,9 +137,12 @@ CGRect YBIBPixelRectForDisplayRect(CGRect rect, CGSize displaySize, CGFloat scal
 }
 
 - (void)loadOriginImage {
+    UIImage *originImage = self.originImage;
+    // Report the size before the cell lays the image out, so continuous mode can size the page first.
+    if (originImage && self.yb_contentSizeResolved) self.yb_contentSizeResolved(originImage.size);
     if (_freezing) return;
-    if (!self.originImage) return;
-    
+    if (!originImage) return;
+
     if ([self shouldCompress]) {
         if (self.compressedImage) {
             [self.delegate yb_imageData:self readyForCompressedImage:self.compressedImage];
@@ -597,6 +600,7 @@ CGRect YBIBPixelRectForDisplayRect(CGRect rect, CGSize displaySize, CGFloat scal
 @synthesize yb_auxiliaryViewHandler = _yb_auxiliaryViewHandler;
 @synthesize yb_webImageMediator = _yb_webImageMediator;
 @synthesize yb_backView = _yb_backView;
+@synthesize yb_contentSizeResolved = _yb_contentSizeResolved;
 
 - (nonnull Class)yb_classOfCell {
     return YBIBImageCell.self;

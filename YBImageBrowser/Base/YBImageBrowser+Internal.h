@@ -17,6 +17,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)implementGetBaseInfoProtocol:(id<YBIBGetBaseInfoProtocol>)obj;
 
+/// Injects the blocks that depend on the page index: a per-page 'yb_containerSize' (in continuous mode each
+/// page has its own size) and, for data objects, 'yb_contentSizeResolved'.
+- (void)implementPageInfo:(id<YBIBGetBaseInfoProtocol>)obj page:(NSInteger)page;
+
+/// Records the natural size of a page's content; in continuous mode this resizes the page and keeps the visible content in place.
+- (void)contentSizeResolved:(CGSize)size forPage:(NSInteger)page;
+
+/// The size of a page in continuous mode (full width, height from the content's aspect ratio or a placeholder).
+- (CGSize)continuousSizeForPage:(NSInteger)page;
+
 @property (nonatomic, weak, nullable) NSObject *hiddenProjectiveView;
 
 @end

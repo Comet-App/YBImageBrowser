@@ -36,8 +36,10 @@
     id<YBIBDataProtocol> data = [_dataCache objectForKey:@(index)];
     if (!data) {
         data = _browser.dataSource ? [_browser.dataSource yb_imageBrowser:_browser dataForCellAtIndex:index] : _browser.dataSourceArray[index];
+        if (!data) return nil;
         [_dataCache setObject:data forKey:@(index)];
         [_browser implementGetBaseInfoProtocol:data];
+        [_browser implementPageInfo:data page:index];
     }
     return data;
 }
